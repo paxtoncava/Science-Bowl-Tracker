@@ -5,6 +5,27 @@ const form = document.getElementById('sessionForm');
 const leaderboardBody = document.getElementById('leaderboardBody');
 const setsList = document.getElementById('setsList');
 
+// Firebase configuration (get this from Firebase Console > Project Settings)
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "your-app.firebaseapp.com",
+  projectId: "your-app-id",
+  storageBucket: "your-app.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "YOUR_APP_ID"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Real-time listener: Updates your site automatically whenever ANY device adds a practice session
+db.collection("sessions").onSnapshot((snapshot) => {
+  const sessions = [];
+  snapshot.forEach((doc) => sessions.push(doc.data()));
+  renderApp(sessions);
+});
+
 // Save & render on page load
 renderApp();
 

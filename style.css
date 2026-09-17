@@ -158,3 +158,22 @@ th, td {
 th {
   background-color: #f9fafb;
 }
+
+.button-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.button-grid .btn {
+  text-align: left;
+  padding: 8px 12px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Active state turns button blue */
+.button-grid .btn.active-opt {
+  background-color: #2563eb !important;
+  color: white !important;
+}

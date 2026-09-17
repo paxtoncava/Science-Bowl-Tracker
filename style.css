@@ -26,6 +26,8 @@ main {
   border-radius: 8px;
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
   margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .inline-form {
@@ -83,14 +85,18 @@ input[type="text"], input[type="date"], select {
 
 .teams-container {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap; /* allows wrap on smaller screens */
+  gap: 15px;
   margin-top: 15px;
+  width: 100%;
 }
 
 .team-column {
-  flex: 1;
+  flex: 1 1 300px; /* Allows flexibility so elements shrink to fit inside the parent */
+  min-width: 0; /* Prevents flex items from overflowing container */
   padding: 15px;
   border-radius: 6px;
+  box-sizing: border-box;
 }
 
 .team-red {
@@ -113,10 +119,15 @@ input[type="text"], input[type="date"], select {
 
 .stat-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* Automatically scales score boxes */
   gap: 5px;
   margin-top: 5px;
   font-size: 12px;
+}
+
+.stat-grid input {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .stat-grid label {

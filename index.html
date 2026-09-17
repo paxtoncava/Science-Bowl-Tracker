@@ -12,7 +12,7 @@
 </head>
 <body>
   <header>
-    <h1>Science Bowl Stats & Question Reader</h1>
+    <h1>🧪 Science Bowl Stats & Question Reader</h1>
   </header>
 
   <main>
@@ -25,15 +25,51 @@
       </form>
     </section>
 
-    <!-- Section 2: Live Question Fetcher -->
+    <!-- Section 2: Live Question Fetcher / Set Mode Selection -->
     <section class="card">
-      <h2>2. Live Question Reader (NSB Sets)</h2>
-      <form id="fetchQuestionsForm" class="inline-form">
-        <input type="text" id="queryText" placeholder="e.g. Science Bowl Regional" required />
-        <button type="submit" class="btn btn-secondary">Fetch Random Tossup</button>
-      </form>
-      <div id="questionBox" class="question-display">
-        <p><em>Click "Fetch Random Tossup" to load a live Science Bowl tossup question.</em></p>
+      <h2>2. Question Reader & Set Mode</h2>
+      
+      <!-- Mode Toggle Buttons -->
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <button id="btnQBReader" type="button" class="btn btn-primary" style="flex: 1;">Use QB Reader</button>
+        <button id="btnCustomSet" type="button" class="btn btn-secondary" style="flex: 1;">Use Own Set</button>
+      </div>
+
+      <!-- Mode A: QB Reader View -->
+      <div id="qbReaderContainer">
+        <form id="fetchQuestionsForm" class="inline-form">
+          <input type="text" id="queryText" placeholder="e.g. Science Bowl Regional" />
+          <button type="submit" class="btn btn-secondary">Fetch Random Tossup</button>
+        </form>
+        <div id="questionBox" class="question-display">
+          <p><em>Click "Fetch Random Tossup" to load a live Science Bowl tossup question.</em></p>
+        </div>
+      </div>
+
+      <!-- Mode B: Custom Set Mode View -->
+      <div id="customSetContainer" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="customCategorySelect">Select Category:</label>
+            <select id="customCategorySelect">
+              <option value="Biology">Biology</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Physics">Physics</option>
+              <option value="Energy">Energy</option>
+              <option value="Math">Math</option>
+              <option value="Earth & Space Science">Earth & Space Science</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="customDifficultySelect">Select Difficulty:</label>
+            <select id="customDifficultySelect">
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: #6b7280;">Custom set mode selected. Selected category will be attached to match records.</p>
       </div>
     </section>
 
@@ -49,6 +85,18 @@
           <div class="form-group">
             <label for="setName">NSB Set/Round Used:</label>
             <input type="text" id="setName" placeholder="e.g. HS Regional 2023 - Round 1" required />
+          </div>
+          <div class="form-group">
+            <label for="matchCategory">Question Category:</label>
+            <select id="matchCategory">
+              <option value="General Science">General Science / Mixed</option>
+              <option value="Biology">Biology</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Physics">Physics</option>
+              <option value="Energy">Energy</option>
+              <option value="Math">Math</option>
+              <option value="Earth & Space Science">Earth & Space Science</option>
+            </select>
           </div>
         </div>
 
@@ -70,24 +118,52 @@
       </form>
     </section>
 
-    <!-- Section 4: Leaderboard -->
+    <!-- Section 4: Leaderboards -->
     <section class="card">
-      <h2>4. Player Leaderboard & Stats</h2>
+      <h2>4. Overall Player Leaderboard</h2>
       <table id="leaderboardTable">
         <thead>
           <tr>
             <th>Player</th>
             <th>Matches</th>
             <th>Correct (+4)</th>
-            <th>Incorrect Interrupts (-4)</th>
-            <th>Incorrect Non-Interrupts (0)</th>
+            <th>Interrupt Negs (-4)</th>
+            <th>Incorrects (0)</th>
             <th>Net Points</th>
             <th>Accuracy %</th>
           </tr>
         </thead>
-        <tbody id="leaderboardBody">
-          <!-- Populated from Firestore -->
-        </tbody>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </section>
+
+    <!-- Section 5: Category Breakdowns -->
+    <section class="card">
+      <h2>5. Category Breakdown</h2>
+      <div class="form-group" style="max-width: 300px; margin-bottom: 15px;">
+        <label for="categoryFilter">Select Subject Category:</label>
+        <select id="categoryFilter">
+          <option value="Biology">Biology</option>
+          <option value="Chemistry">Chemistry</option>
+          <option value="Physics">Physics</option>
+          <option value="Energy">Energy</option>
+          <option value="Math">Math</option>
+          <option value="Earth & Space Science">Earth & Space Science</option>
+        </select>
+      </div>
+
+      <table id="categoryTable">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Correct (+4)</th>
+            <th>Interrupt Negs (-4)</th>
+            <th>Incorrects (0)</th>
+            <th>Category Net Points</th>
+            <th>Category Accuracy %</th>
+          </tr>
+        </thead>
+        <tbody id="categoryLeaderboardBody"></tbody>
       </table>
     </section>
   </main>

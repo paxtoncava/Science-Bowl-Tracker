@@ -91,28 +91,44 @@ document.getElementById('addPlayerForm').addEventListener('submit', async (e) =>
   }
 });
 
-// Fetch Live Question via QB Reader API
+// Fetch Live Question via QB Reader API (Strictly Science Bowl)
 document.getElementById('fetchQuestionsForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const query = document.getElementById('queryText').value;
   const box = document.getElementById('questionBox');
-  box.innerHTML = '<p>Loading question...</p>';
+  box.innerHTML = '<p>Loading Science Bowl question...</p>';
+
+  // Official Science Bowl subjects
+  const scienceCategories = ["Biology", "Chemistry", "Physics", "Math", "Earth Science", "Space Science", "Energy"];
 
   try {
-    const res = await fetch(`https://www.qbreader.org/api/random-tossup?queryString=${encodeURIComponent(query)}`);
+    // We explicitly query the API for Science Bowl questions
+    const res = await fetch(`https://www.qbreader.org/api/random-tossup?setName=National%20Science%20Bowl`);
     const data = await res.json();
+    
     if (data.tossups && data.tossups.length > 0) {
       const q = data.tossups[0];
       box.innerHTML = `
-        <p><strong>Category:</strong> ${q.category || 'Science Bowl'}</p>
+        <p><strong>Set:</strong> ${q.setName || 'National Science Bowl'}</p>
+        <p><strong>Category:</strong> ${q.category || 'Science'}</p>
+        <hr />
         <p><strong>Question:</strong> ${q.question_sanitized || q.question}</p>
         <p><strong>Answer:</strong> <b>${q.answer_sanitized || q.answer}</b></p>
       `;
     } else {
-      box.innerHTML = '<p>No questions found. Try a broader search term like "Science Bowl".</p>';
+      // Fallback request if specific set name isn't matched
+      const fallbackRes = await fetch(`https://www.qbreader.org/api/random-tossup?queryString=Science%20Bowl`);
+      const fallbackData = await fallbackRes.json();
+      const q = fallbackData.tossups[0];
+      
+      box.innerHTML = `
+        <p><strong>Category:</strong> ${q.category || 'Science'}</p>
+        <hr />
+        <p><strong>Question:</strong> ${q.question_sanitized || q.question}</p>
+        <p><strong>Answer:</strong> <b>${q.answer_sanitized || q.answer}</b></p>
+      `;
     }
   } catch (err) {
-    box.innerHTML = '<p>Error fetching question.</p>';
+    box.innerHTML = '<p>Error fetching question. Please try again.</p>';
   }
 });
 

@@ -1,11 +1,11 @@
 // 1. Firebase Credentials Setup
 const firebaseConfig = {
-  apiKey: "AIzaSyDiySqCc-ksWDVOJ277AuBL1wogw3fDd3g",
-  authDomain: "science-bowl-tracker.firebaseapp.com",
-  projectId: "science-bowl-tracker",
-  storageBucket: "science-bowl-tracker.firebasestorage.app",
-  messagingSenderId: "1027133622682",
-  appId: "1:1027133622682:web:1cc5d35031ee8f74bb9223"
+  apiKey: "AIzaSyDiySqCc-ksWDVOJ277AuBL1wogw3fDd3g",
+  authDomain: "science-bowl-tracker.firebaseapp.com",
+  projectId: "science-bowl-tracker",
+  storageBucket: "science-bowl-tracker.firebasestorage.app",
+  messagingSenderId: "1027133622682",
+  appId: "1:1027133622682:web:1cc5d35031ee8f74bb9223"
 };
 
 // Initialize Firebase & Database
@@ -14,6 +14,7 @@ const db = firebase.firestore();
 
 // Global Variables
 let roster = [];
+let globalMatches = [];
 
 // Set default date to today
 document.getElementById('matchDate').valueAsDate = new Date();
@@ -27,9 +28,36 @@ db.collection("roster").onSnapshot(snapshot => {
 });
 
 db.collection("matches").onSnapshot(snapshot => {
-  const matches = [];
-  snapshot.forEach(doc => matches.push(doc.data()));
-  renderLeaderboard(matches);
+  globalMatches = [];
+  snapshot.forEach(doc => globalMatches.push(doc.data()));
+  renderLeaderboards(globalMatches);
+});
+
+// Mode Selector Logic
+const btnQBReader = document.getElementById('btnQBReader');
+const btnCustomSet = document.getElementById('btnCustomSet');
+const qbContainer = document.getElementById('qbReaderContainer');
+const customContainer = document.getElementById('customSetContainer');
+const customCatSelect = document.getElementById('customCategorySelect');
+const matchCatSelect = document.getElementById('matchCategory');
+
+btnQBReader.addEventListener('click', () => {
+  btnQBReader.className = 'btn btn-primary';
+  btnCustomSet.className = 'btn btn-secondary';
+  qbContainer.style.display = 'block';
+  customContainer.style.display = 'none';
+});
+
+btnCustomSet.addEventListener('click', () => {
+  btnCustomSet.className = 'btn btn-primary';
+  btnQBReader.className = 'btn btn-secondary';
+  qbContainer.style.display = 'none';
+  customContainer.style.display = 'block';
+});
+
+// Auto-sync category selection from Custom Set mode to match recorder
+customCatSelect.addEventListener('change', (e) => {
+  matchCatSelect.value = e.target.value;
 });
 
 // Render 5 slot dropdowns for Red and 5 for Green
@@ -91,17 +119,13 @@ document.getElementById('addPlayerForm').addEventListener('submit', async (e) =>
   }
 });
 
-// Fetch Live Question via QB Reader API (Strictly Science Bowl)
+// Fetch Live Question via QB Reader API
 document.getElementById('fetchQuestionsForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const box = document.getElementById('questionBox');
   box.innerHTML = '<p>Loading Science Bowl question...</p>';
 
-  // Official Science Bowl subjects
-  const scienceCategories = ["Biology", "Chemistry", "Physics", "Math", "Earth Science", "Space Science", "Energy"];
-
   try {
-    // We explicitly query the API for Science Bowl questions
     const res = await fetch(`https://www.qbreader.org/api/random-tossup?setName=National%20Science%20Bowl`);
     const data = await res.json();
     
@@ -114,21 +138,9 @@ document.getElementById('fetchQuestionsForm').addEventListener('submit', async (
         <p><strong>Question:</strong> ${q.question_sanitized || q.question}</p>
         <p><strong>Answer:</strong> <b>${q.answer_sanitized || q.answer}</b></p>
       `;
-    } else {
-      // Fallback request if specific set name isn't matched
-      const fallbackRes = await fetch(`https://www.qbreader.org/api/random-tossup?queryString=Science%20Bowl`);
-      const fallbackData = await fallbackRes.json();
-      const q = fallbackData.tossups[0];
-      
-      box.innerHTML = `
-        <p><strong>Category:</strong> ${q.category || 'Science'}</p>
-        <hr />
-        <p><strong>Question:</strong> ${q.question_sanitized || q.question}</p>
-        <p><strong>Answer:</strong> <b>${q.answer_sanitized || q.answer}</b></p>
-      `;
     }
   } catch (err) {
-    box.innerHTML = '<p>Error fetching question. Please try again.</p>';
+    box.innerHTML = '<p>Error fetching question.</p>';
   }
 });
 
@@ -139,6 +151,7 @@ document.getElementById('matchForm').addEventListener('submit', async (e) => {
   const matchData = {
     date: document.getElementById('matchDate').value,
     setName: document.getElementById('setName').value.trim(),
+    category: document.getElementById('matchCategory').value,
     players: []
   };
 
@@ -176,11 +189,20 @@ document.getElementById('matchForm').addEventListener('submit', async (e) => {
   renderPlayerDropdowns();
 });
 
-// Calculate Leaderboard Stats
-function renderLeaderboard(matches) {
+// Category Filter Listener
+document.getElementById('categoryFilter').addEventListener('change', () => {
+  renderCategoryBreakdown(globalMatches);
+});
+
+// Calculate Overall and Category Stats
+function renderLeaderboards(matches) {
+  renderOverallLeaderboard(matches);
+  renderCategoryBreakdown(matches);
+}
+
+function renderOverallLeaderboard(matches) {
   const stats = {};
 
-  // Ensure all registered players appear even with 0 games
   roster.forEach(name => {
     stats[name] = { matches: 0, correct: 0, interrupts: 0, incorrects: 0 };
   });
@@ -201,8 +223,6 @@ function renderLeaderboard(matches) {
   tbody.innerHTML = '';
 
   const playerNames = Object.keys(stats);
-  
-  // Sort players by Net Points descending
   playerNames.sort((a, b) => {
     const netA = (stats[a].correct * 4) - (stats[a].interrupts * 4);
     const netB = (stats[b].correct * 4) - (stats[b].interrupts * 4);
@@ -222,6 +242,56 @@ function renderLeaderboard(matches) {
       <td style="color: green;">+${p.correct} (${p.correct * 4} pts)</td>
       <td style="color: red;">${p.interrupts} (-${p.interrupts * 4} pts)</td>
       <td>${p.incorrects} (0 pts)</td>
+      <td><strong>${netPoints} pts</strong></td>
+      <td>${accuracy}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderCategoryBreakdown(matches) {
+  const selectedCat = document.getElementById('categoryFilter').value;
+  const stats = {};
+
+  roster.forEach(name => {
+    stats[name] = { correct: 0, interrupts: 0, incorrects: 0 };
+  });
+
+  matches.forEach(match => {
+    if (match.category === selectedCat) {
+      match.players.forEach(p => {
+        if (!stats[p.name]) {
+          stats[p.name] = { correct: 0, interrupts: 0, incorrects: 0 };
+        }
+        stats[p.name].correct += p.correct;
+        stats[p.name].interrupts += p.interrupts;
+        stats[p.name].incorrects += p.incorrects;
+      });
+    }
+  });
+
+  const tbody = document.getElementById('categoryLeaderboardBody');
+  tbody.innerHTML = '';
+
+  const playerNames = Object.keys(stats);
+  playerNames.sort((a, b) => {
+    const netA = (stats[a].correct * 4) - (stats[a].interrupts * 4);
+    const netB = (stats[b].correct * 4) - (stats[b].interrupts * 4);
+    return netB - netA;
+  });
+
+  playerNames.forEach(name => {
+    const p = stats[name];
+    const netPoints = (p.correct * 4) - (p.interrupts * 4);
+    const totalAttempts = p.correct + p.interrupts + p.incorrects;
+    const accuracy = totalAttempts > 0 ? ((p.correct / totalAttempts) * 100).toFixed(1) + '%' : '0.0%';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${name}</strong></td>
+      <td style="color: green;">+${p.correct}</td>
+      <td style="color: red;">${p.interrupts}</td>
+      <td>${p.incorrects}</td>
       <td><strong>${netPoints} pts</strong></td>
       <td>${accuracy}</td>
     `;

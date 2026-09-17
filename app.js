@@ -41,6 +41,40 @@ const customContainer = document.getElementById('customSetContainer');
 const customCatSelect = document.getElementById('customCategorySelect');
 const matchCatSelect = document.getElementById('matchCategory');
 
+// Universal toggle handler for button groups
+function setupButtonGroup(containerId, buttonClass, onSelectCallback) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest(`.${buttonClass}`);
+    if (!btn) return;
+
+    // Remove active state from all sibling buttons in group
+    container.querySelectorAll(`.${buttonClass}`).forEach(b => b.classList.remove('active-opt'));
+
+    // Highlight clicked button
+    btn.classList.add('active-opt');
+
+    // Run callback with selected data value
+    const val = btn.getAttribute('data-value');
+    if (onSelectCallback) onSelectCallback(val);
+  });
+}
+
+// Initialize Category buttons
+setupButtonGroup('categoryBtnGroup', 'cat-btn', (selectedValue) => {
+  const matchCatSelect = document.getElementById('matchCategory');
+  if (matchCatSelect) {
+    matchCatSelect.value = selectedValue;
+  }
+});
+
+// Initialize Difficulty buttons
+setupButtonGroup('difficultyBtnGroup', 'diff-btn', (selectedValue) => {
+  console.log('Difficulty selected:', selectedValue);
+});
+
 btnQBReader.addEventListener('click', () => {
   btnQBReader.className = 'btn btn-primary';
   btnCustomSet.className = 'btn btn-secondary';
@@ -210,19 +244,6 @@ function setupButtonGroup(groupId, onSelectCallback) {
     });
   });
 }
-
-// Enable category button selection & auto-sync to match recorder
-setupButtonGroup('categoryBtnGroup', (selectedValue) => {
-  const matchCatSelect = document.getElementById('matchCategory');
-  if (matchCatSelect) {
-    matchCatSelect.value = selectedValue;
-  }
-});
-
-// Enable difficulty button selection
-setupButtonGroup('difficultyBtnGroup', (selectedValue) => {
-  console.log('Selected difficulty:', selectedValue);
-});
 
 // Calculate Overall and Category Stats
 function renderLeaderboards(matches) {

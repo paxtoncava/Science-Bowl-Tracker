@@ -1,11 +1,11 @@
 // 1. Firebase Credentials Setup
 const firebaseConfig = {
-  apiKey: "AIzaSyDiySqCc-ksWDVOJ277AuBL1wogw3fDd3g",
-  authDomain: "science-bowl-tracker.firebaseapp.com",
-  projectId: "science-bowl-tracker",
-  storageBucket: "science-bowl-tracker.firebasestorage.app",
-  messagingSenderId: "1027133622682",
-  appId: "1:1027133622682:web:1cc5d35031ee8f74bb9223"
+  apiKey: "AIzaSyDiySqCc-ksWDVOJ277AuBL1wogw3fDd3g",
+  authDomain: "science-bowl-tracker.firebaseapp.com",
+  projectId: "science-bowl-tracker",
+  storageBucket: "science-bowl-tracker.firebasestorage.app",
+  messagingSenderId: "1027133622682",
+  appId: "1:1027133622682:web:1cc5d35031ee8f74bb9223"
 };
 
 // Initialize Firebase & Database
@@ -38,7 +38,6 @@ const btnQBReader = document.getElementById('btnQBReader');
 const btnCustomSet = document.getElementById('btnCustomSet');
 const qbContainer = document.getElementById('qbReaderContainer');
 const customContainer = document.getElementById('customSetContainer');
-const customCatSelect = document.getElementById('customCategorySelect');
 const matchCatSelect = document.getElementById('matchCategory');
 
 // Universal toggle handler for button groups
@@ -64,7 +63,6 @@ function setupButtonGroup(containerId, buttonClass, onSelectCallback) {
 
 // Initialize Category buttons
 setupButtonGroup('categoryBtnGroup', 'cat-btn', (selectedValue) => {
-  const matchCatSelect = document.getElementById('matchCategory');
   if (matchCatSelect) {
     matchCatSelect.value = selectedValue;
   }
@@ -87,11 +85,6 @@ btnCustomSet.addEventListener('click', () => {
   btnQBReader.className = 'btn btn-secondary';
   qbContainer.style.display = 'none';
   customContainer.style.display = 'block';
-});
-
-// Auto-sync category selection from Custom Set mode to match recorder
-customCatSelect.addEventListener('change', (e) => {
-  matchCatSelect.value = e.target.value;
 });
 
 // Render 5 slot dropdowns for Red and 5 for Green
@@ -227,23 +220,6 @@ document.getElementById('matchForm').addEventListener('submit', async (e) => {
 document.getElementById('categoryFilter').addEventListener('change', () => {
   renderCategoryBreakdown(globalMatches);
 });
-
-// Function to handle button toggle groups
-function setupButtonGroup(groupId, onSelectCallback) {
-  const container = document.getElementById(groupId);
-  const buttons = container.querySelectorAll('.btn');
-
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      buttons.forEach(b => b.classList.remove('active-opt'));
-      btn.classList.add('active-opt');
-      
-      if (onSelectCallback) {
-        onSelectCallback(btn.getAttribute('data-value'));
-      }
-    });
-  });
-}
 
 // Calculate Overall and Category Stats
 function renderLeaderboards(matches) {

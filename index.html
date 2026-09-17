@@ -49,29 +49,31 @@
       <!-- Mode B: Custom Set Mode View -->
       <div id="customSetContainer" style="display: none;">
         <div class="form-row">
+          <!-- Category Column -->
           <div class="form-group">
-            <label for="customCategorySelect">Select Category:</label>
-            <select id="customCategorySelect">
-              <option value="Biology">Biology</option>
-              <option value="Chemistry">Chemistry</option>
-              <option value="Physics">Physics</option>
-              <option value="Energy">Energy</option>
-              <option value="Math">Math</option>
-              <option value="Earth & Space Science">Earth & Space Science</option>
-            </select>
+            <label>Select Category:</label>
+            <div id="categoryBtnGroup" class="button-grid">
+              <button type="button" class="btn btn-secondary active-opt" data-value="Biology">Biology</button>
+              <button type="button" class="btn btn-secondary" data-value="Chemistry">Chemistry</button>
+              <button type="button" class="btn btn-secondary" data-value="Physics">Physics</button>
+              <button type="button" class="btn btn-secondary" data-value="Energy">Energy</button>
+              <button type="button" class="btn btn-secondary" data-value="Math">Math</button>
+              <button type="button" class="btn btn-secondary" data-value="Earth & Space Science">Earth & Space Science</button>
+            </div>
           </div>
+      
+          <!-- Difficulty Column -->
           <div class="form-group">
-            <label for="customDifficultySelect">Select Difficulty:</label>
-            <select id="customDifficultySelect">
-              <option value="Easy">Easy</option>
-              <option value="Medium">Medium</option>
-              <option value="Hard">Hard</option>
-            </select>
+            <label>Select Difficulty:</label>
+            <div id="difficultyBtnGroup" class="button-grid">
+              <button type="button" class="btn btn-secondary active-opt" data-value="Easy">Easy</button>
+              <button type="button" class="btn btn-secondary" data-value="Medium">Medium</option>
+              <button type="button" class="btn btn-secondary" data-value="Hard">Hard</button>
+            </div>
           </div>
         </div>
-        <p style="font-size: 13px; color: #6b7280;">Custom set mode selected. Selected category will be attached to match records.</p>
+        <p style="font-size: 13px; color: #6b7280; margin-top: 10px;">Custom set mode selected. Selected category will automatically update match record details.</p>
       </div>
-    </section>
 
     <!-- Section 3: Record Practice Match -->
     <section class="card">

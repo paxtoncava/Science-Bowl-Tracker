@@ -85,15 +85,15 @@ input[type="text"], input[type="date"], select {
 
 .teams-container {
   display: flex;
-  flex-wrap: wrap; /* allows wrap on smaller screens */
+  flex-wrap: wrap;
   gap: 15px;
   margin-top: 15px;
   width: 100%;
 }
 
 .team-column {
-  flex: 1 1 300px; /* Allows flexibility so elements shrink to fit inside the parent */
-  min-width: 0; /* Prevents flex items from overflowing container */
+  flex: 1 1 300px;
+  min-width: 0;
   padding: 15px;
   border-radius: 6px;
   box-sizing: border-box;
@@ -119,7 +119,7 @@ input[type="text"], input[type="date"], select {
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* Automatically scales score boxes */
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
   gap: 5px;
   margin-top: 5px;
   font-size: 12px;

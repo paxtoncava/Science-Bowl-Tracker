@@ -194,6 +194,36 @@ document.getElementById('categoryFilter').addEventListener('change', () => {
   renderCategoryBreakdown(globalMatches);
 });
 
+// Function to handle button toggle groups
+function setupButtonGroup(groupId, onSelectCallback) {
+  const container = document.getElementById(groupId);
+  const buttons = container.querySelectorAll('.btn');
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active-opt'));
+      btn.classList.add('active-opt');
+      
+      if (onSelectCallback) {
+        onSelectCallback(btn.getAttribute('data-value'));
+      }
+    });
+  });
+}
+
+// Enable category button selection & auto-sync to match recorder
+setupButtonGroup('categoryBtnGroup', (selectedValue) => {
+  const matchCatSelect = document.getElementById('matchCategory');
+  if (matchCatSelect) {
+    matchCatSelect.value = selectedValue;
+  }
+});
+
+// Enable difficulty button selection
+setupButtonGroup('difficultyBtnGroup', (selectedValue) => {
+  console.log('Selected difficulty:', selectedValue);
+});
+
 // Calculate Overall and Category Stats
 function renderLeaderboards(matches) {
   renderOverallLeaderboard(matches);

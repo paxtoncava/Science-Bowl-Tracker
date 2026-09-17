@@ -161,19 +161,27 @@ th {
 
 .button-grid {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 5px;
 }
 
-.button-grid .btn {
-  text-align: left;
+.cat-btn, .diff-btn {
+  background-color: #4b5563;
+  color: white;
+  border: none;
   padding: 8px 12px;
-  transition: background-color 0.2s, color 0.2s;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
 }
 
-/* Active state turns button blue */
-.button-grid .btn.active-opt {
+.cat-btn:hover, .diff-btn:hover {
+  background-color: #374151;
+}
+
+.cat-btn.active-opt, .diff-btn.active-opt {
   background-color: #2563eb !important;
   color: white !important;
 }

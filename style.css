@@ -30,6 +30,71 @@ main {
   box-sizing: border-box;
 }
 
+.header-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+/* Live Scoreboard Styling */
+.scoreboard {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.score-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.score-red {
+  background-color: #fef2f2;
+  border: 2px solid #ef4444;
+}
+
+.score-green {
+  background-color: #f0fdf4;
+  border: 2px solid #22c55e;
+}
+
+.team-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.score-num {
+  font-size: 32px;
+  font-weight: 800;
+  margin: 4px 0;
+}
+
+.btn-bonus {
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.btn-bonus-red {
+  background-color: #ef4444;
+  color: white;
+}
+
+.btn-bonus-green {
+  background-color: #22c55e;
+  color: white;
+}
+
 .inline-form {
   display: flex;
   gap: 10px;
@@ -83,6 +148,18 @@ input[type="text"], input[type="date"], select {
   color: white;
 }
 
+.btn-danger {
+  background-color: #ef4444;
+  color: white;
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+.btn-danger:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+}
+
 .teams-container {
   display: flex;
   flex-wrap: wrap;
@@ -117,22 +194,59 @@ input[type="text"], input[type="date"], select {
   border: 1px solid #e5e7eb;
 }
 
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+.action-btn-group {
+  display: flex;
   gap: 5px;
-  margin-top: 5px;
+  margin-top: 8px;
+}
+
+.act-btn {
+  flex: 1;
+  padding: 6px 0;
   font-size: 12px;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.1s;
 }
 
-.stat-grid input {
-  width: 100%;
-  box-sizing: border-box;
+.act-btn:active {
+  transform: scale(0.97);
 }
 
-.stat-grid label {
+.btn-correct {
+  background-color: #22c55e;
+  color: white;
+}
+
+.btn-interrupt {
+  background-color: #ef4444;
+  color: white;
+}
+
+.btn-incorrect {
+  background-color: #6b7280;
+  color: white;
+}
+
+.slot-summary {
   font-size: 11px;
-  font-weight: normal;
+  color: #6b7280;
+  margin-top: 6px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.toast-indicator {
+  background-color: #1e293b;
+  color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  border-left: 4px solid #2563eb;
+  transition: all 0.3s ease;
 }
 
 .question-display {

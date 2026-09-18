@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Science Bowl Tracker & Reader</title>
+  <title>Science Bowl Stats & Question Reader</title>
   <link rel="stylesheet" href="style.css" />
 
   <!-- Firebase SDKs -->
@@ -25,14 +25,14 @@
       </form>
     </section>
 
-    <!-- Section 2: Question Reader & Set Mode -->
+    <!-- Section 2: Question Selector & Active Controls -->
     <section class="card">
-      <h2>2. Question Reader & Set Mode</h2>
+      <h2>2. Active Question Settings</h2>
       
       <!-- Mode Toggle Buttons -->
       <div style="display: flex; gap: 10px; margin-bottom: 15px;">
         <button id="btnQBReader" type="button" class="btn btn-secondary" style="flex: 1;">Use QB Reader</button>
-        <button id="btnCustomSet" type="button" class="btn btn-primary" style="flex: 1;">Use Own Set</button>
+        <button id="btnCustomSet" type="button" class="btn btn-primary" style="flex: 1;">Use Custom Mode</button>
       </div>
 
       <!-- Mode A: QB Reader View -->
@@ -46,12 +46,12 @@
         </div>
       </div>
 
-      <!-- Mode B: Custom Set Mode View -->
+      <!-- Mode B: Active Category & Difficulty Selector -->
       <div id="customSetContainer">
         <div class="form-row">
           <!-- Category Column -->
           <div class="form-group">
-            <label>Select Category:</label>
+            <label>Current Question Category:</label>
             <div id="categoryBtnGroup" class="button-grid">
               <button type="button" class="cat-btn active-opt" data-value="General Science">General Science</button>
               <button type="button" class="cat-btn" data-value="Biology">Biology</button>
@@ -65,7 +65,7 @@
 
           <!-- Difficulty Column -->
           <div class="form-group">
-            <label>Select Difficulty:</label>
+            <label>Current Question Difficulty:</label>
             <div id="difficultyBtnGroup" class="button-grid">
               <button type="button" class="diff-btn active-opt" data-value="Easy">Easy</button>
               <button type="button" class="diff-btn" data-value="Medium">Medium</button>
@@ -73,13 +73,33 @@
             </div>
           </div>
         </div>
-        <p style="font-size: 13px; color: #6b7280; margin-top: 10px;">Custom set mode selected. Selected category will automatically update match record details.</p>
       </div>
     </section>
 
-    <!-- Section 3: Record Practice Match -->
+    <!-- Section 3: Live Practice Match Console & Scoreboard -->
     <section class="card">
-      <h2>3. Record Practice Match (Red vs. Green)</h2>
+      <div class="header-with-action">
+        <h2>3. Live Practice Match Console</h2>
+        <button id="undoBtn" type="button" class="btn btn-danger" disabled>↩ Undo Last Action</button>
+      </div>
+
+      <!-- Live Match Scoreboard Header -->
+      <div class="scoreboard">
+        <div class="score-card score-red">
+          <span class="team-title">🔴 Red Team</span>
+          <span id="redTotalScore" class="score-num">0</span>
+          <button type="button" class="btn-bonus btn-bonus-red" onclick="recordBonus('Red')">+10 Team Bonus</button>
+        </div>
+
+        <div class="score-card score-green">
+          <span class="team-title">🟢 Green Team</span>
+          <span id="greenTotalScore" class="score-num">0</span>
+          <button type="button" class="btn-bonus btn-bonus-green" onclick="recordBonus('Green')">+10 Team Bonus</button>
+        </div>
+      </div>
+
+      <div id="actionToast" class="toast-indicator">Ready for live questions...</div>
+
       <form id="matchForm">
         <div class="form-row">
           <div class="form-group">
@@ -90,35 +110,23 @@
             <label for="setName">NSB Set/Round Used:</label>
             <input type="text" id="setName" placeholder="e.g. HS Regional 2023 - Round 1" required />
           </div>
-          <div class="form-group">
-            <label for="matchCategory">Question Category:</label>
-            <select id="matchCategory">
-              <option value="General Science">General Science</option>
-              <option value="Biology">Biology</option>
-              <option value="Chemistry">Chemistry</option>
-              <option value="Physics">Physics</option>
-              <option value="Energy">Energy</option>
-              <option value="Math">Math</option>
-              <option value="Earth & Space Science">Earth & Space Science</option>
-            </select>
-          </div>
         </div>
 
         <div class="teams-container">
           <!-- Red Team -->
           <div class="team-column team-red">
-            <h3>🔴 Red Team</h3>
+            <h3>🔴 Red Roster</h3>
             <div id="redPlayers"></div>
           </div>
 
           <!-- Green Team -->
           <div class="team-column team-green">
-            <h3>🟢 Green Team</h3>
+            <h3>🟢 Green Roster</h3>
             <div id="greenPlayers"></div>
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">Save Practice Results</button>
+        <button type="submit" class="btn btn-primary">Save Practice Match Record</button>
       </form>
     </section>
 

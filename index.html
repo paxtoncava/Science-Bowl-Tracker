@@ -85,16 +85,26 @@
 
       <!-- Live Match Scoreboard Header -->
       <div class="scoreboard">
+        <!-- Red Score Card -->
         <div class="score-card score-red">
           <span class="team-title">🔴 Red Team</span>
           <span id="redTotalScore" class="score-num">0</span>
           <button type="button" class="btn-bonus btn-bonus-red" onclick="recordBonus('Red')">+10 Team Bonus</button>
+          <div class="penalty-btn-row">
+            <button type="button" class="btn-penalty btn-penalty-add" onclick="recordTeamPenalty('Red', 4)">+4 Penalty Pts</button>
+            <button type="button" class="btn-penalty btn-penalty-sub" onclick="recordTeamPenalty('Red', -4)">-4 Score Adj</button>
+          </div>
         </div>
 
+        <!-- Green Score Card -->
         <div class="score-card score-green">
           <span class="team-title">🟢 Green Team</span>
           <span id="greenTotalScore" class="score-num">0</span>
           <button type="button" class="btn-bonus btn-bonus-green" onclick="recordBonus('Green')">+10 Team Bonus</button>
+          <div class="penalty-btn-row">
+            <button type="button" class="btn-penalty btn-penalty-add" onclick="recordTeamPenalty('Green', 4)">+4 Penalty Pts</button>
+            <button type="button" class="btn-penalty btn-penalty-sub" onclick="recordTeamPenalty('Green', -4)">-4 Score Adj</button>
+          </div>
         </div>
       </div>
 

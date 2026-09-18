@@ -17,7 +17,8 @@ let roster = [];
 let globalMatches = [];
 let actionHistory = []; // Stack for undo functionality
 let liveStats = {}; // Player actions tracker
-let teamBonuses = { Red: 0, Green: 0 }; // Bonus counters
+let teamBonuses = { Red: 0, Green: 0 }; // Bonus counters (+10)
+let teamPenalties = { Red: 0, Green: 0 }; // Score adjustment counters (+4 / -4)
 let activeCategory = "General Science";
 let activeDifficulty = "Easy";
 
@@ -129,7 +130,7 @@ function createPlayerCard(team, index) {
     </select>
     <div class="action-btn-group">
       <button type="button" class="act-btn btn-correct" onclick="recordAction('${cardId}', 'correct')">+4 Tossup</button>
-      <button type="button" class="act-btn btn-interrupt" onclick="recordAction('${cardId}', 'interrupt')">-4 Neg</button>
+      <button type="button" class="act-btn btn-interrupt" onclick="recordAction('${cardId}', 'interrupt')">Neg (-4 Player / +4 Opp)</button>
       <button type="button" class="act-btn btn-incorrect" onclick="recordAction('${cardId}', 'incorrect')">0 Inc</button>
     </div>
     <div class="slot-summary" id="summary-${cardId}">
@@ -176,7 +177,11 @@ function recordAction(cardId, type) {
   updateSlotDisplay(cardId);
   recalculateScoreboard();
 
-  const typeLabels = { correct: '+4 Tossup Correct', interrupt: '-4 Interrupt Neg', incorrect: '0 Incorrect' };
+  const typeLabels = { 
+    correct: '+4 Tossup Correct', 
+    interrupt: 'Interrupt Neg (-4 Player / +4 Opponent)', 
+    incorrect: '0 Incorrect' 
+  };
   showToast(`${typeLabels[type]} for ${playerName} (${activeCategory})`);
 }
 
@@ -199,6 +204,25 @@ function recordBonus(team) {
   showToast(`+10 Bonus Point added to ${team} Team!`);
 }
 
+// Record Standalone Team Score Adjustment (+4 or -4 penalty pts)
+function recordTeamPenalty(team, delta) {
+  teamPenalties[team] = (teamPenalties[team] || 0) + delta;
+
+  const entry = {
+    kind: 'teamPenalty',
+    team: team,
+    delta: delta,
+    timestamp: Date.now()
+  };
+
+  actionHistory.push(entry);
+  undoBtn.disabled = false;
+
+  recalculateScoreboard();
+  const label = delta > 0 ? `+${delta} Penalty Points` : `${delta} Score Adjustment`;
+  showToast(`${label} assigned to ${team} Team`);
+}
+
 // Undo last entry
 undoBtn.addEventListener('click', () => {
   if (actionHistory.length === 0) return;
@@ -208,6 +232,9 @@ undoBtn.addEventListener('click', () => {
   if (lastAction.kind === 'bonus') {
     teamBonuses[lastAction.team] = Math.max(0, teamBonuses[lastAction.team] - 1);
     showToast(`Undid +10 Bonus for ${lastAction.team} Team`, true);
+  } else if (lastAction.kind === 'teamPenalty') {
+    teamPenalties[lastAction.team] = (teamPenalties[lastAction.team] || 0) - lastAction.delta;
+    showToast(`Undid penalty adjustment for ${lastAction.team} Team`, true);
   } else {
     const slotActions = liveStats[lastAction.cardId];
     if (slotActions) {
@@ -243,8 +270,8 @@ function updateSlotDisplay(cardId) {
 
 // Calculate and Update Realtime Live Scores
 function recalculateScoreboard() {
-  let redScore = (teamBonuses.Red || 0) * 10;
-  let greenScore = (teamBonuses.Green || 0) * 10;
+  let redScore = (teamBonuses.Red || 0) * 10 + (teamPenalties.Red || 0);
+  let greenScore = (teamBonuses.Green || 0) * 10 + (teamPenalties.Green || 0);
 
   // Process player slot actions
   Object.keys(liveStats).forEach(cardId => {
@@ -252,14 +279,13 @@ function recalculateScoreboard() {
     const actions = liveStats[cardId] || [];
 
     actions.forEach(a => {
-      let points = 0;
-      if (a.type === 'correct') points = 4;
-      if (a.type === 'interrupt') points = -4;
-
-      if (isRed) {
-        redScore += points;
-      } else {
-        greenScore += points;
+      if (a.type === 'correct') {
+        if (isRed) redScore += 4;
+        else greenScore += 4;
+      } else if (a.type === 'interrupt') {
+        // Official NSB Rule: Neg on Red awards +4 points to Green, and vice-versa
+        if (isRed) greenScore += 4;
+        else redScore += 4;
       }
     });
   });
@@ -332,8 +358,8 @@ document.getElementById('matchForm').addEventListener('submit', async (e) => {
     });
   });
 
-  if (matchData.events.length === 0 && teamBonuses.Red === 0 && teamBonuses.Green === 0) {
-    alert('No question actions recorded yet. Track questions or bonus points before saving.');
+  if (matchData.events.length === 0 && teamBonuses.Red === 0 && teamBonuses.Green === 0 && teamPenalties.Red === 0 && teamPenalties.Green === 0) {
+    alert('No question actions recorded yet. Track questions or score adjustments before saving.');
     return;
   }
 
@@ -343,6 +369,7 @@ document.getElementById('matchForm').addEventListener('submit', async (e) => {
   // Reset live state
   liveStats = {};
   teamBonuses = { Red: 0, Green: 0 };
+  teamPenalties = { Red: 0, Green: 0 };
   actionHistory = [];
   undoBtn.disabled = true;
   recalculateScoreboard();

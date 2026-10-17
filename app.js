@@ -12,6 +12,18 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+const auth = firebase.auth();
+const signInBtn = document.getElementById('signInBtn');
+
+signInBtn.addEventListener('click', () => {
+  if (auth.currentUser) auth.signOut();
+  else auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+});
+
+auth.onAuthStateChanged(user => {
+  signInBtn.textContent = user ? `Sign out (${user.email})` : `Sign in`;
+});
+
 // Global State
 let roster = [];
 let globalMatches = [];

@@ -20,8 +20,33 @@ signInBtn.addEventListener('click', () => {
   else auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
 });
 
+let unsubRoster = null, unsubMatches = null;
+
 auth.onAuthStateChanged(user => {
-  signInBtn.textContent = user ? `Sign out (${user.email})` : `Sign in`;
+  signInBtn.textContent = user ? `Sign out (${user.email})` : 'Sign in';
+
+  // stop old listeners
+  if (unsubRoster) { unsubRoster(); unsubRoster = null; }
+  if (unsubMatches) { unsubMatches(); unsubMatches = null; }
+
+  if (!user) {
+    roster = []; globalMatches = [];
+    renderPlayerDropdowns(); renderLeaderboards([]);
+    return;
+  }
+
+  unsubRoster = db.collection("roster").onSnapshot(snapshot => {
+    roster = [];
+    snapshot.forEach(doc => roster.push(doc.data().name));
+    roster.sort();
+    renderPlayerDropdowns();
+  }, err => showToast(`Roster: ${err.code}`, true));
+
+  unsubMatches = db.collection("matches").onSnapshot(snapshot => {
+    globalMatches = [];
+    snapshot.forEach(doc => globalMatches.push(doc.data()));
+    renderLeaderboards(globalMatches);
+  }, err => showToast(`Matches: ${err.code}`, true));
 });
 
 // Global State
@@ -37,19 +62,7 @@ let activeDifficulty = "Easy";
 // Set default date to today
 document.getElementById('matchDate').valueAsDate = new Date();
 
-// Load Roster & Matches live from Firebase
-db.collection("roster").onSnapshot(snapshot => {
-  roster = [];
-  snapshot.forEach(doc => roster.push(doc.data().name));
-  roster.sort();
-  renderPlayerDropdowns();
-});
 
-db.collection("matches").onSnapshot(snapshot => {
-  globalMatches = [];
-  snapshot.forEach(doc => globalMatches.push(doc.data()));
-  renderLeaderboards(globalMatches);
-});
 
 // Mode Selector Logic
 const btnQBReader = document.getElementById('btnQBReader');

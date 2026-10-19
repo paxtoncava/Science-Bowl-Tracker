@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Science Bowl Stats & Question Reader</title>
+  <title>Science Bowl Tracker</title>
   <link rel="stylesheet" href="style.css" />
 
   <!-- Firebase SDKs -->
@@ -12,216 +12,201 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Science Bowl Stats & Question Reader</h1>
-    <button id="signInBtn" class="btn btn-secondary">Sign in</button>
+  <header class="topbar">
+    <div class="brand">Science Bowl Tracker</div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="live" class="tab active">Live Match</button>
+      <button data-tab="leaderboard" class="tab">Leaderboard</button>
+      <button data-tab="categories" class="tab">Categories</button>
+      <button data-tab="builder" class="tab">Team Builder</button>
+      <button data-tab="history" class="tab">History</button>
+      <button data-tab="roster" class="tab">Roster</button>
+    </nav>
+    <button id="signInBtn" class="btn btn-ghost">Sign in</button>
   </header>
 
+  <div id="signedOutNotice" class="notice">Sign in to load and save practice data.</div>
+  <div id="toast" class="toast"></div>
+
   <main>
-    <!-- Section 1: Player Roster Management -->
-    <section class="card">
-      <h2>1. Add Player to Team Roster</h2>
-      <form id="addPlayerForm" class="inline-form">
-        <input type="text" id="newPlayerName" placeholder="Enter Full Name..." required />
-        <button type="submit" class="btn btn-secondary">Add Player</button>
-      </form>
-    </section>
+    <!-- ================= LIVE MATCH ================= -->
+    <section id="tab-live" class="tab-panel active">
 
-    <!-- Section 2: Question Selector & Active Controls -->
-    <section class="card">
-      <h2>2. Active Question Settings</h2>
-      
-      <!-- Mode Toggle Buttons -->
-      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <button id="btnQBReader" type="button" class="btn btn-secondary" style="flex: 1;">Use QB Reader</button>
-        <button id="btnCustomSet" type="button" class="btn btn-primary" style="flex: 1;">Use Custom Mode</button>
-      </div>
-
-      <!-- Mode A: QB Reader View -->
-      <div id="qbReaderContainer" style="display: none;">
-        <form id="fetchQuestionsForm" class="inline-form">
-          <input type="text" id="queryText" placeholder="e.g. Science Bowl Regional" />
-          <button type="submit" class="btn btn-secondary">Fetch Random Tossup</button>
-        </form>
-        <div id="questionBox" class="question-display">
-          <p><em>Click "Fetch Random Tossup" to load a live Science Bowl tossup question.</em></p>
-        </div>
-      </div>
-
-      <!-- Mode B: Active Category & Difficulty Selector -->
-      <div id="customSetContainer">
-        <div class="form-row">
-          <!-- Category Column -->
-          <div class="form-group">
-            <label>Current Question Category:</label>
-            <div id="categoryBtnGroup" class="button-grid">
-              <button type="button" class="cat-btn active-opt" data-value="General Science">General Science</button>
-              <button type="button" class="cat-btn" data-value="Biology">Biology</button>
-              <button type="button" class="cat-btn" data-value="Chemistry">Chemistry</button>
-              <button type="button" class="cat-btn" data-value="Physics">Physics</button>
-              <button type="button" class="cat-btn" data-value="Energy">Energy</button>
-              <button type="button" class="cat-btn" data-value="Math">Math</button>
-              <button type="button" class="cat-btn" data-value="Earth & Space Science">Earth & Space Science</button>
-            </div>
-          </div>
-
-          <!-- Difficulty Column -->
-          <div class="form-group">
-            <label>Current Question Difficulty:</label>
-            <div id="difficultyBtnGroup" class="button-grid">
-              <button type="button" class="diff-btn active-opt" data-value="Easy">Easy</button>
-              <button type="button" class="diff-btn" data-value="Medium">Medium</button>
-              <button type="button" class="diff-btn" data-value="Hard">Hard</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Section 3: Live Practice Match Console & Scoreboard -->
-    <section class="card">
-      <div class="header-with-action">
-        <h2>3. Live Practice Match Console</h2>
-        <button id="undoBtn" type="button" class="btn btn-danger" disabled>↩ Undo Last Action</button>
-      </div>
-
-      <!-- Live Match Scoreboard Header -->
-      <div class="scoreboard">
-        <!-- Red Score Card -->
-        <div class="score-card score-red">
-          <span class="team-title">🔴 Red Team</span>
-          <span id="redTotalScore" class="score-num">0</span>
-          <button type="button" class="btn-bonus btn-bonus-red" onclick="recordBonus('Red')">+10 Team Bonus</button>
-          <div class="penalty-btn-row">
-            <button type="button" class="btn-penalty btn-penalty-add" onclick="recordTeamPenalty('Red', 4)">+4 Penalty Pts</button>
-            <button type="button" class="btn-penalty btn-penalty-sub" onclick="recordTeamPenalty('Red', -4)">-4 Score Adj</button>
-          </div>
-        </div>
-
-        <!-- Green Score Card -->
-        <div class="score-card score-green">
-          <span class="team-title">🟢 Green Team</span>
-          <span id="greenTotalScore" class="score-num">0</span>
-          <button type="button" class="btn-bonus btn-bonus-green" onclick="recordBonus('Green')">+10 Team Bonus</button>
-          <div class="penalty-btn-row">
-            <button type="button" class="btn-penalty btn-penalty-add" onclick="recordTeamPenalty('Green', 4)">+4 Penalty Pts</button>
-            <button type="button" class="btn-penalty btn-penalty-sub" onclick="recordTeamPenalty('Green', -4)">-4 Score Adj</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="tossup-bar">
-        <span id="tossupCounter" class="tossup-counter">Tossups completed: 0</span>
-        <button type="button" class="btn btn-next" onclick="nextTossup()">Next Tossup ▶</button>
-      </div>
-      <p class="hint">Click <strong>Next Tossup</strong> after every tossup (including dead ones) so everyone seated gets credit for hearing it. Swapping a player in a slot keeps the previous player's stats.</p>
-
-      <div id="actionToast" class="toast-indicator">Ready for live questions...</div>
-
-      <form id="matchForm">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="matchDate">Date:</label>
-            <input type="date" id="matchDate" required />
-          </div>
-          <div class="form-group">
-            <label for="setName">NSB Set/Round Used:</label>
-            <input type="text" id="setName" placeholder="e.g. HS Regional 2023 - Round 1" required />
-          </div>
-          <div class="form-group">
-            <label for="matchGroup">Practice Group:</label>
+      <details class="card" id="setupCard" open>
+        <summary><h2>Practice setup</h2><span class="muted" id="setupSummary"></span></summary>
+        <div class="grid-4">
+          <label>Date<input type="date" id="matchDate" /></label>
+          <label>Group
             <select id="matchGroup">
               <option value="Wednesday">Wednesday</option>
               <option value="Thursday">Thursday</option>
               <option value="Other">Other / Combined</option>
             </select>
+          </label>
+          <label>Question set<input type="text" id="setName" list="setList" placeholder="e.g. 2019 HS Regional Set 3" /></label>
+          <label>Round<input type="text" id="roundName" placeholder="e.g. Round 4" /></label>
+        </div>
+        <datalist id="setList"></datalist>
+
+        <div class="row-between">
+          <h3>Who's here today? <span class="muted" id="presentCount"></span></h3>
+          <div class="btn-row">
+            <button type="button" class="btn btn-small" id="presentAllBtn">All</button>
+            <button type="button" class="btn btn-small" id="presentNoneBtn">None</button>
+          </div>
+        </div>
+        <div id="attendanceChips" class="chips"></div>
+      </details>
+
+      <div class="card">
+        <div class="row-between">
+          <h2>Lineup</h2>
+          <div class="btn-row">
+            <button type="button" class="btn btn-small" id="autoSeatBtn" title="Seats the 10 present players who have played the fewest tossups today, on random teams">Auto-seat (least played first)</button>
+            <button type="button" class="btn btn-small" id="clearSeatsBtn">Clear seats</button>
+          </div>
+        </div>
+        <div class="lineup">
+          <div class="team-col red"><h3>Red</h3><div id="seats-Red"></div></div>
+          <div class="team-col green"><h3>Green</h3><div id="seats-Green"></div></div>
+        </div>
+        <div class="bench-line"><strong>Bench:</strong> <span id="benchList" class="muted">—</span></div>
+      </div>
+
+      <div class="card console" id="console">
+        <div class="scorebar">
+          <div class="score red"><span>Red</span><b id="scoreRed">0</b></div>
+          <div class="tu-status">
+            <div class="tu-num" id="tuNum">Tossup 1</div>
+            <div class="tu-phase" id="tuPhase">Pick the category, read the tossup</div>
+          </div>
+          <div class="score green"><span>Green</span><b id="scoreGreen">0</b></div>
+        </div>
+
+        <div class="cat-row" id="catRow"></div>
+
+        <div class="buzz-grid">
+          <div id="buzz-Red" class="buzz-col red"></div>
+          <div id="buzz-Green" class="buzz-col green"></div>
+        </div>
+
+        <div id="bonusPanel" class="bonus-panel hidden">
+          <div id="bonusLabel">Bonus</div>
+          <div class="btn-row">
+            <button type="button" class="btn btn-correct" id="bonusYes">Bonus correct (+10) <kbd>Y</kbd></button>
+            <button type="button" class="btn btn-wrong" id="bonusNo">Bonus missed <kbd>X</kbd></button>
           </div>
         </div>
 
-        <div class="teams-container">
-          <!-- Red Team -->
-          <div class="team-column team-red">
-            <h3>🔴 Red Roster</h3>
-            <div id="redPlayers"></div>
-          </div>
-
-          <!-- Green Team -->
-          <div class="team-column team-green">
-            <h3>🟢 Green Roster</h3>
-            <div id="greenPlayers"></div>
-          </div>
+        <div class="bench-credit">
+          <div><strong>Bench written answers</strong> <span class="muted">— tap anyone on the bench who wrote the right answer to this tossup</span></div>
+          <div id="benchChips" class="chips"></div>
         </div>
 
-        <button type="submit" class="btn btn-primary">Save Practice Match Record</button>
-      </form>
-    </section>
+        <div class="console-actions">
+          <button type="button" class="btn" id="deadBtn">Dead / next tossup <kbd>D</kbd></button>
+          <button type="button" class="btn btn-ghost" id="undoBtn">Undo <kbd>U</kbd></button>
+          <details class="adjust">
+            <summary>Score adjustments</summary>
+            <div class="btn-row">
+              <button type="button" class="btn btn-small" data-adj="Red" data-delta="4">Red +4</button>
+              <button type="button" class="btn btn-small" data-adj="Red" data-delta="-4">Red −4</button>
+              <button type="button" class="btn btn-small" data-adj="Green" data-delta="4">Green +4</button>
+              <button type="button" class="btn btn-small" data-adj="Green" data-delta="-4">Green −4</button>
+            </div>
+            <p class="muted small">For penalties like conferring on a tossup or blurting (opponent gets +4).</p>
+          </details>
+        </div>
 
-    <!-- Section 4: Leaderboards -->
-    <section class="card">
-      <h2>4. Overall Player Leaderboard</h2>
-      <div class="form-group" style="max-width: 300px; margin-bottom: 10px;">
-        <label for="groupFilter">Show Practice Group:</label>
-        <select id="groupFilter">
-          <option value="All">All Groups</option>
-          <option value="Wednesday">Wednesday</option>
-          <option value="Thursday">Thursday</option>
-          <option value="Other">Other / Combined</option>
-        </select>
-      </div>
-      <p class="hint">Ranked by <strong>Pts / Tossup Heard</strong> (fair when playing time differs). Grayed-out players have fewer than 3 matches. This filter also applies to the Category Breakdown.</p>
-      <div class="table-scroll">
-      <table id="leaderboardTable">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>Matches</th>
-            <th>Tossups Heard</th>
-            <th>Correct (+4)</th>
-            <th>Negs (-4)</th>
-            <th>Inc (0)</th>
-            <th>Net Pts</th>
-            <th>Pts / Tossup Heard</th>
-            <th>Pts / Match</th>
-            <th>Accuracy %</th>
-          </tr>
-        </thead>
-        <tbody id="leaderboardBody"></tbody>
-      </table>
+        <div class="log" id="matchLog"></div>
+
+        <div class="btn-row end-row">
+          <button type="button" class="btn btn-primary" id="saveMatchBtn">End &amp; save match</button>
+          <button type="button" class="btn btn-ghost" id="discardMatchBtn">Discard match</button>
+        </div>
+        <p class="muted small">Shortcuts: <kbd>B</kbd> Biology · <kbd>C</kbd> Chemistry · <kbd>E</kbd> Earth &amp; Space · <kbd>N</kbd> Energy · <kbd>M</kbd> Math · <kbd>P</kbd> Physics · <kbd>D</kbd> dead · <kbd>Y</kbd>/<kbd>X</kbd> bonus · <kbd>U</kbd> undo. A match in progress is saved in this browser, so a refresh won't lose it.</p>
       </div>
     </section>
 
-    <!-- Section 5: Category Breakdowns -->
-    <section class="card">
-      <h2>5. Category Breakdown</h2>
-      <div class="form-group" style="max-width: 300px; margin-bottom: 15px;">
-        <label for="categoryFilter">Select Subject Category:</label>
-        <select id="categoryFilter">
-          <option value="General Science">General Science</option>
-          <option value="Biology">Biology</option>
-          <option value="Chemistry">Chemistry</option>
-          <option value="Physics">Physics</option>
-          <option value="Energy">Energy</option>
-          <option value="Math">Math</option>
-          <option value="Earth & Space Science">Earth & Space Science</option>
-        </select>
+    <!-- ================= LEADERBOARD ================= -->
+    <section id="tab-leaderboard" class="tab-panel">
+      <div class="card">
+        <div class="row-between wrap">
+          <h2>Leaderboard</h2>
+          <div class="filters">
+            <label>Group <select class="groupFilter"></select></label>
+            <label>Since <input type="date" class="sinceFilter" /></label>
+            <button type="button" class="btn btn-small" id="exportCsvBtn">Export CSV</button>
+          </div>
+        </div>
+        <p class="muted small">Sorted by <b>Pts / 10 TU</b>: tossup points per 10 tossups heard while seated (+4 correct, −4 neg), so playing time doesn't matter. Click any column to re-sort. Gray rows have fewer than <span class="minHeardLabel"></span> tossups heard, so treat them as early estimates. <b>Bench</b> is written answers while sitting out.</p>
+        <div class="table-scroll"><table id="lbTable"></table></div>
+      </div>
+    </section>
+
+    <!-- ================= CATEGORIES ================= -->
+    <section id="tab-categories" class="tab-panel">
+      <div class="card">
+        <div class="row-between wrap">
+          <h2>Category strengths</h2>
+          <div class="filters">
+            <label>Group <select class="groupFilter"></select></label>
+            <label>Since <input type="date" class="sinceFilter" /></label>
+          </div>
+        </div>
+        <p class="muted small">Each cell is the chance the player knows a tossup in that category, from seated correct answers plus bench written answers. Small samples are pulled toward the player's overall rate so one lucky question doesn't dominate. The small number is <i>known / heard</i>.</p>
+        <div class="table-scroll"><table id="heatTable" class="heat"></table></div>
+      </div>
+    </section>
+
+    <!-- ================= TEAM BUILDER ================= -->
+    <section id="tab-builder" class="tab-panel">
+      <div class="card">
+        <div class="row-between wrap">
+          <h2>Team Builder</h2>
+          <div class="filters">
+            <label>Group <select class="groupFilter"></select></label>
+            <label>Since <input type="date" class="sinceFilter" /></label>
+            <label>Min tossups heard <input type="number" id="builderMinHeard" min="0" value="20" style="width:80px" /></label>
+          </div>
+        </div>
+        <p class="muted small">A team scores a tossup if <i>anyone</i> on it knows the answer, so the best team isn't just the top 4 on the leaderboard; it's the 4 who cover each other's gaps. <b>Coverage</b> = estimated chance at least one starter knows a tossup, averaged over the six categories. The alternate is whoever adds the most on top of the starters. Tap a name to <b>lock</b> them in (e.g. a captain), tap again to <b>exclude</b> them.</p>
+        <div id="builderPool" class="chips"></div>
+        <div class="btn-row"><button type="button" class="btn btn-primary" id="runBuilderBtn">Find best lineups</button></div>
+        <div id="builderResults"></div>
       </div>
 
-      <div class="table-scroll">
-      <table id="categoryTable">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>Tossups Heard</th>
-            <th>Correct (+4)</th>
-            <th>Negs (-4)</th>
-            <th>Inc (0)</th>
-            <th>Category Net Pts</th>
-            <th>Pts / Tossup Heard</th>
-            <th>Category Accuracy %</th>
-          </tr>
-        </thead>
-        <tbody id="categoryLeaderboardBody"></tbody>
-      </table>
+      <div class="card">
+        <h2>Compare a custom team</h2>
+        <p class="muted small">Pick up to 5 players to see their combined coverage.</p>
+        <div id="customPool" class="chips"></div>
+        <div id="customResult"></div>
+      </div>
+    </section>
+
+    <!-- ================= HISTORY ================= -->
+    <section id="tab-history" class="tab-panel">
+      <div class="card">
+        <div class="row-between wrap">
+          <h2>Match history</h2>
+          <div class="filters"><label>Group <select class="groupFilter"></select></label></div>
+        </div>
+        <div id="historyList"></div>
+      </div>
+    </section>
+
+    <!-- ================= ROSTER ================= -->
+    <section id="tab-roster" class="tab-panel">
+      <div class="card">
+        <h2>Add players</h2>
+        <p class="muted small">One per line: <code>Last, First, Grade</code> or <code>First Last, Grade</code>. Grade is optional (9–12 or Freshman–Senior).</p>
+        <textarea id="bulkAdd" rows="5" placeholder="Bramhill, Alex, 11&#10;Victoria von Schimmelmann, 10"></textarea>
+        <div class="btn-row"><button type="button" class="btn btn-primary" id="bulkAddBtn">Add players</button></div>
+      </div>
+      <div class="card">
+        <h2>Roster</h2>
+        <p class="muted small">Inactive players are hidden from attendance and the Team Builder but keep their stats.</p>
+        <div class="table-scroll"><table id="rosterTable"></table></div>
       </div>
     </section>
   </main>

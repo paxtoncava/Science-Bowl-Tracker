@@ -326,3 +326,38 @@ th {
   background-color: #2563eb !important;
   color: white !important;
 }
+
+/* Tossup tracking */
+.tossup-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.tossup-counter {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.btn-next {
+  background-color: #7c3aed;
+  color: white;
+  font-size: 15px;
+}
+
+.hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 4px 0 12px;
+}
+
+/* Leaderboard */
+.table-scroll {
+  overflow-x: auto;
+}
+
+tr.low-sample td {
+  color: #9ca3af !important;
+}

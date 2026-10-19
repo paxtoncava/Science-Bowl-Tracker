@@ -110,6 +110,12 @@
         </div>
       </div>
 
+      <div class="tossup-bar">
+        <span id="tossupCounter" class="tossup-counter">Tossups completed: 0</span>
+        <button type="button" class="btn btn-next" onclick="nextTossup()">Next Tossup ▶</button>
+      </div>
+      <p class="hint">Click <strong>Next Tossup</strong> after every tossup (including dead ones) so everyone seated gets credit for hearing it. Swapping a player in a slot keeps the previous player's stats.</p>
+
       <div id="actionToast" class="toast-indicator">Ready for live questions...</div>
 
       <form id="matchForm">
@@ -121,6 +127,14 @@
           <div class="form-group">
             <label for="setName">NSB Set/Round Used:</label>
             <input type="text" id="setName" placeholder="e.g. HS Regional 2023 - Round 1" required />
+          </div>
+          <div class="form-group">
+            <label for="matchGroup">Practice Group:</label>
+            <select id="matchGroup">
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Other">Other / Combined</option>
+            </select>
           </div>
         </div>
 
@@ -145,20 +159,35 @@
     <!-- Section 4: Leaderboards -->
     <section class="card">
       <h2>4. Overall Player Leaderboard</h2>
+      <div class="form-group" style="max-width: 300px; margin-bottom: 10px;">
+        <label for="groupFilter">Show Practice Group:</label>
+        <select id="groupFilter">
+          <option value="All">All Groups</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+          <option value="Other">Other / Combined</option>
+        </select>
+      </div>
+      <p class="hint">Ranked by <strong>Pts / Tossup Heard</strong> (fair when playing time differs). Grayed-out players have fewer than 3 matches. This filter also applies to the Category Breakdown.</p>
+      <div class="table-scroll">
       <table id="leaderboardTable">
         <thead>
           <tr>
             <th>Player</th>
             <th>Matches</th>
+            <th>Tossups Heard</th>
             <th>Correct (+4)</th>
-            <th>Interrupt Negs (-4)</th>
-            <th>Incorrects (0)</th>
-            <th>Net Points</th>
+            <th>Negs (-4)</th>
+            <th>Inc (0)</th>
+            <th>Net Pts</th>
+            <th>Pts / Tossup Heard</th>
+            <th>Pts / Match</th>
             <th>Accuracy %</th>
           </tr>
         </thead>
         <tbody id="leaderboardBody"></tbody>
       </table>
+      </div>
     </section>
 
     <!-- Section 5: Category Breakdowns -->
@@ -177,19 +206,23 @@
         </select>
       </div>
 
+      <div class="table-scroll">
       <table id="categoryTable">
         <thead>
           <tr>
             <th>Player</th>
+            <th>Tossups Heard</th>
             <th>Correct (+4)</th>
-            <th>Interrupt Negs (-4)</th>
-            <th>Incorrects (0)</th>
-            <th>Category Net Points</th>
+            <th>Negs (-4)</th>
+            <th>Inc (0)</th>
+            <th>Category Net Pts</th>
+            <th>Pts / Tossup Heard</th>
             <th>Category Accuracy %</th>
           </tr>
         </thead>
         <tbody id="categoryLeaderboardBody"></tbody>
       </table>
+      </div>
     </section>
   </main>
 

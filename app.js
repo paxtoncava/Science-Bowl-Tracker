@@ -11,8 +11,31 @@ const firebaseConfig = {
 // Initialize Firebase & Database
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-
 const auth = firebase.auth();
+
+// Players need at least this many matches to be ranked normally on the leaderboard
+const MIN_MATCHES_FOR_RANKING = 3;
+
+// Global State
+let roster = [];
+let globalMatches = [];
+let actionHistory = []; // Stack for undo functionality
+let liveStats = {}; // cardId -> list of tossup actions (each action keeps its own playerName)
+let teamBonuses = { Red: 0, Green: 0 }; // Bonus counters (+10)
+let teamPenalties = { Red: 0, Green: 0 }; // Score adjustment counters (+4 / -4)
+let tossupLog = []; // One entry per completed tossup: { category, difficulty, players: [seated names] }
+let seenPlayers = new Set(); // Everyone who sat in a slot at any point during the live match
+let activeCategory = "General Science";
+let activeDifficulty = "Easy";
+
+// Escape text before inserting it into HTML
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// ---------- Sign-in & live data ----------
 const signInBtn = document.getElementById('signInBtn');
 
 signInBtn.addEventListener('click', () => {
@@ -49,20 +72,13 @@ auth.onAuthStateChanged(user => {
   }, err => showToast(`Matches: ${err.code}`, true));
 });
 
-// Global State
-let roster = [];
-let globalMatches = [];
-let actionHistory = []; // Stack for undo functionality
-let liveStats = {}; // Player actions tracker
-let teamBonuses = { Red: 0, Green: 0 }; // Bonus counters (+10)
-let teamPenalties = { Red: 0, Green: 0 }; // Score adjustment counters (+4 / -4)
-let activeCategory = "General Science";
-let activeDifficulty = "Easy";
-
-// Set default date to today
-document.getElementById('matchDate').valueAsDate = new Date();
-
-
+// Set default date to today (local time; valueAsDate would use UTC and show tomorrow in the evening)
+function setDateToToday() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('matchDate').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+setDateToToday();
 
 // Mode Selector Logic
 const btnQBReader = document.getElementById('btnQBReader');
@@ -124,33 +140,52 @@ function showToast(message, isUndo = false) {
   }, 2500);
 }
 
-// Render 5 slot dropdowns for Red and 5 for Green with Action Buttons
+// ---------- Live match console ----------
+
+// Names currently selected in the 10 slots
+function getSeatedPlayers() {
+  return [...document.querySelectorAll('.player-select')]
+    .map(s => s.value)
+    .filter(Boolean);
+}
+
+// Render 5 slot dropdowns for Red and 5 for Green, keeping any current selections
 function renderPlayerDropdowns() {
   const redContainer = document.getElementById('redPlayers');
   const greenContainer = document.getElementById('greenPlayers');
+
+  // Remember who is seated so a roster update mid-match doesn't clear the lineup
+  const previous = {};
+  document.querySelectorAll('.player-card').forEach(card => {
+    previous[card.id] = card.querySelector('.player-select').value;
+  });
 
   redContainer.innerHTML = '';
   greenContainer.innerHTML = '';
 
   for (let i = 1; i <= 5; i++) {
-    redContainer.appendChild(createPlayerCard('Red', i));
-    greenContainer.appendChild(createPlayerCard('Green', i));
+    redContainer.appendChild(createPlayerCard('Red', i, previous));
+    greenContainer.appendChild(createPlayerCard('Green', i, previous));
   }
 }
 
-function createPlayerCard(team, index) {
+function createPlayerCard(team, index, previous = {}) {
   const card = document.createElement('div');
   card.className = 'player-card';
   const cardId = `${team.toLowerCase()}-slot-${index}`;
   card.setAttribute('id', cardId);
 
+  const selected = previous[cardId] || '';
   let optionsHtml = '<option value="">-- Select Player --</option>';
   roster.forEach(name => {
-    optionsHtml += `<option value="${name}">${name}</option>`;
+    const sel = name === selected ? ' selected' : '';
+    optionsHtml += `<option value="${escapeHtml(name)}"${sel}>${escapeHtml(name)}</option>`;
   });
 
+  // Swapping players does NOT erase stats: each action stores the player's name,
+  // so a subbed-out player's points stay in the match.
   card.innerHTML = `
-    <select class="player-select ${team.toLowerCase()}-player-name" onchange="resetSlotStats('${cardId}')">
+    <select class="player-select ${team.toLowerCase()}-player-name" onchange="onSlotChange('${cardId}')">
       ${optionsHtml}
     </select>
     <div class="action-btn-group">
@@ -158,18 +193,19 @@ function createPlayerCard(team, index) {
       <button type="button" class="act-btn btn-interrupt" onclick="recordAction('${cardId}', 'interrupt')">Neg (-4 Player / +4 Opp)</button>
       <button type="button" class="act-btn btn-incorrect" onclick="recordAction('${cardId}', 'incorrect')">0 Inc</button>
     </div>
-    <div class="slot-summary" id="summary-${cardId}">
-      Correct: 0 | Negs: 0 | Inc: 0
-    </div>
+    <div class="slot-summary" id="summary-${cardId}"></div>
   `;
+
+  // Fill in the summary after the card is built
+  setTimeout(() => updateSlotDisplay(cardId), 0);
   return card;
 }
 
-// Reset stats for a slot if user changes selected player
-function resetSlotStats(cardId) {
-  liveStats[cardId] = [];
+// Player in a slot changed (substitution): just refresh that slot's summary
+function onSlotChange(cardId) {
+  const name = document.querySelector(`#${cardId} .player-select`).value;
+  if (name) seenPlayers.add(name);
   updateSlotDisplay(cardId);
-  recalculateScoreboard();
 }
 
 // Record individual question outcome
@@ -192,22 +228,48 @@ function recordAction(cardId, type) {
     type,
     category: activeCategory,
     difficulty: activeDifficulty,
+    tossupIndex: tossupLog.length, // which tossup this happened on
     timestamp: Date.now()
   };
 
   liveStats[cardId].push(entry);
   actionHistory.push(entry);
+  seenPlayers.add(playerName);
 
   undoBtn.disabled = false;
   updateSlotDisplay(cardId);
   recalculateScoreboard();
 
-  const typeLabels = { 
-    correct: '+4 Tossup Correct', 
-    interrupt: 'Interrupt Neg (-4 Player / +4 Opponent)', 
-    incorrect: '0 Incorrect' 
+  const typeLabels = {
+    correct: '+4 Tossup Correct',
+    interrupt: 'Interrupt Neg (-4 Player / +4 Opponent)',
+    incorrect: '0 Incorrect'
   };
   showToast(`${typeLabels[type]} for ${playerName} (${activeCategory})`);
+}
+
+// Close out the current tossup: everyone seated right now "heard" it.
+// Use this after every tossup, including dead ones nobody answered.
+function nextTossup() {
+  const players = getSeatedPlayers();
+  if (players.length === 0) {
+    alert('Seat at least one player before counting tossups.');
+    return;
+  }
+  players.forEach(n => seenPlayers.add(n));
+
+  tossupLog.push({ category: activeCategory, difficulty: activeDifficulty, players });
+  actionHistory.push({ kind: 'nextTossup', timestamp: Date.now() });
+
+  undoBtn.disabled = false;
+  updateTossupCounter();
+  document.querySelectorAll('.player-card').forEach(c => updateSlotDisplay(c.id));
+  showToast(`Tossup ${tossupLog.length} done (${activeCategory}). Ready for tossup ${tossupLog.length + 1}.`);
+}
+
+function updateTossupCounter() {
+  const el = document.getElementById('tossupCounter');
+  if (el) el.textContent = `Tossups completed: ${tossupLog.length}`;
 }
 
 // Record Team Bonus (+10)
@@ -260,6 +322,11 @@ undoBtn.addEventListener('click', () => {
   } else if (lastAction.kind === 'teamPenalty') {
     teamPenalties[lastAction.team] = (teamPenalties[lastAction.team] || 0) - lastAction.delta;
     showToast(`Undid penalty adjustment for ${lastAction.team} Team`, true);
+  } else if (lastAction.kind === 'nextTossup') {
+    tossupLog.pop();
+    updateTossupCounter();
+    document.querySelectorAll('.player-card').forEach(c => updateSlotDisplay(c.id));
+    showToast(`Undid "Next Tossup" (back to tossup ${tossupLog.length + 1})`, true);
   } else {
     const slotActions = liveStats[lastAction.cardId];
     if (slotActions) {
@@ -277,20 +344,28 @@ undoBtn.addEventListener('click', () => {
   }
 });
 
+// Show the stats of whoever is currently in this slot (this match only)
 function updateSlotDisplay(cardId) {
-  const actions = liveStats[cardId] || [];
-  let correct = 0, interrupts = 0, incorrects = 0;
+  const summary = document.getElementById(`summary-${cardId}`);
+  if (!summary) return;
 
-  actions.forEach(a => {
+  const select = document.querySelector(`#${cardId} .player-select`);
+  const name = select ? select.value : '';
+  if (!name) {
+    summary.textContent = 'No player selected';
+    return;
+  }
+
+  let correct = 0, interrupts = 0, incorrects = 0;
+  Object.values(liveStats).flat().forEach(a => {
+    if (a.playerName !== name) return;
     if (a.type === 'correct') correct++;
     if (a.type === 'interrupt') interrupts++;
     if (a.type === 'incorrect') incorrects++;
   });
+  const heard = tossupLog.filter(t => t.players.includes(name)).length;
 
-  const summary = document.getElementById(`summary-${cardId}`);
-  if (summary) {
-    summary.textContent = `Correct: ${correct} | Negs: ${interrupts} | Inc: ${incorrects}`;
-  }
+  summary.textContent = `Correct: ${correct} | Negs: ${interrupts} | Inc: ${incorrects} | Heard: ${heard}`;
 }
 
 // Calculate and Update Realtime Live Scores
@@ -342,16 +417,18 @@ document.getElementById('fetchQuestionsForm').addEventListener('submit', async (
   try {
     const res = await fetch(`https://www.qbreader.org/api/random-tossup?setName=National%20Science%20Bowl`);
     const data = await res.json();
-    
+
     if (data.tossups && data.tossups.length > 0) {
       const q = data.tossups[0];
       box.innerHTML = `
-        <p><strong>Set:</strong> ${q.setName || 'National Science Bowl'}</p>
-        <p><strong>Category:</strong> ${q.category || 'Science'}</p>
+        <p><strong>Set:</strong> ${escapeHtml(q.setName || 'National Science Bowl')}</p>
+        <p><strong>Category:</strong> ${escapeHtml(q.category || 'Science')}</p>
         <hr />
-        <p><strong>Question:</strong> ${q.question_sanitized || q.question}</p>
-        <p><strong>Answer:</strong> <b>${q.answer_sanitized || q.answer}</b></p>
+        <p><strong>Question:</strong> ${escapeHtml(q.question_sanitized || q.question)}</p>
+        <p><strong>Answer:</strong> <b>${escapeHtml(q.answer_sanitized || q.answer)}</b></p>
       `;
+    } else {
+      box.innerHTML = '<p>No tossups found.</p>';
     }
   } catch (err) {
     box.innerHTML = '<p>Error fetching question.</p>';
@@ -362,9 +439,23 @@ document.getElementById('fetchQuestionsForm').addEventListener('submit', async (
 document.getElementById('matchForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
+  const allActions = Object.values(liveStats).flat();
+
+  // If the last tossup had activity but "Next Tossup" wasn't clicked, count it now
+  if (allActions.some(a => a.tossupIndex === tossupLog.length) && getSeatedPlayers().length > 0) {
+    tossupLog.push({ category: activeCategory, difficulty: activeDifficulty, players: getSeatedPlayers() });
+  }
+
+  const players = new Set(seenPlayers);
+  getSeatedPlayers().forEach(n => players.add(n));
+  allActions.forEach(a => players.add(a.playerName));
+
   const matchData = {
     date: document.getElementById('matchDate').value,
     setName: document.getElementById('setName').value.trim(),
+    group: document.getElementById('matchGroup').value,
+    players: [...players],   // everyone who sat in a slot this match (counts toward Matches)
+    tossupLog: tossupLog,    // who heard each tossup (counts toward Tossups Heard)
     events: [],
     redScore: parseInt(document.getElementById('redTotalScore').textContent) || 0,
     greenScore: parseInt(document.getElementById('greenTotalScore').textContent) || 0
@@ -383,94 +474,163 @@ document.getElementById('matchForm').addEventListener('submit', async (e) => {
     });
   });
 
-  if (matchData.events.length === 0 && teamBonuses.Red === 0 && teamBonuses.Green === 0 && teamPenalties.Red === 0 && teamPenalties.Green === 0) {
+  if (matchData.events.length === 0 && tossupLog.length === 0 && teamBonuses.Red === 0 && teamBonuses.Green === 0 && teamPenalties.Red === 0 && teamPenalties.Green === 0) {
     alert('No question actions recorded yet. Track questions or score adjustments before saving.');
     return;
   }
 
-  await db.collection("matches").add(matchData);
+  try {
+    await db.collection("matches").add(matchData);
+  } catch (err) {
+    alert(`Match NOT saved (${err.code || err.message}). Make sure you're signed in.`);
+    return;
+  }
   alert('Match saved successfully!');
-  
-  // Reset live state
+
+  // Reset live state (keep the group selection and lineup for the next match)
+  const keepGroup = document.getElementById('matchGroup').value;
   liveStats = {};
   teamBonuses = { Red: 0, Green: 0 };
   teamPenalties = { Red: 0, Green: 0 };
   actionHistory = [];
+  tossupLog = [];
+  seenPlayers = new Set();
   undoBtn.disabled = true;
   recalculateScoreboard();
-  document.getElementById('matchForm').reset();
-  renderPlayerDropdowns();
+  updateTossupCounter();
+  document.getElementById('setName').value = '';
+  setDateToToday();
+  document.getElementById('matchGroup').value = keepGroup;
+  document.querySelectorAll('.player-card').forEach(c => updateSlotDisplay(c.id));
 });
 
-// Category Filter Listener
-document.getElementById('categoryFilter').addEventListener('change', () => {
-  renderCategoryBreakdown(globalMatches);
+// ---------- Leaderboards ----------
+
+// Group filter + category filter listeners
+document.getElementById('groupFilter').addEventListener('change', () => {
+  renderLeaderboards(globalMatches);
 });
+document.getElementById('categoryFilter').addEventListener('change', () => {
+  renderCategoryBreakdown(filterByGroup(globalMatches));
+});
+
+function filterByGroup(matches) {
+  const g = document.getElementById('groupFilter').value;
+  if (g === 'All') return matches;
+  return matches.filter(m => (m.group || 'Other') === g);
+}
 
 // Leaderboards calculation logic
 function renderLeaderboards(matches) {
-  renderOverallLeaderboard(matches);
-  renderCategoryBreakdown(matches);
+  const filtered = filterByGroup(matches);
+  renderOverallLeaderboard(filtered);
+  renderCategoryBreakdown(filtered);
 }
 
-function renderOverallLeaderboard(matches) {
-  const stats = {};
+function emptyStats() {
+  // tracked* = only from matches that logged tossups heard, so the rate compares like with like
+  return { matches: 0, correct: 0, interrupts: 0, incorrects: 0, heard: 0, trackedNet: 0 };
+}
 
-  roster.forEach(name => {
-    stats[name] = { matches: 0, correct: 0, interrupts: 0, incorrects: 0 };
-  });
+// Build per-player stats. If category is given, only count that category.
+function buildStats(matches, category = null) {
+  const stats = {};
+  roster.forEach(name => { stats[name] = emptyStats(); });
+  const get = name => (stats[name] = stats[name] || emptyStats());
 
   matches.forEach(match => {
-    const playersInMatch = new Set();
+    const hasTossupLog = Array.isArray(match.tossupLog);
+    const playersInMatch = new Set(Array.isArray(match.players) && typeof match.players[0] === 'string' ? match.players : []);
 
     if (match.events) {
       match.events.forEach(e => {
         playersInMatch.add(e.name);
-        if (!stats[e.name]) stats[e.name] = { matches: 0, correct: 0, interrupts: 0, incorrects: 0 };
-        if (e.type === 'correct') stats[e.name].correct++;
-        if (e.type === 'interrupt') stats[e.name].interrupts++;
-        if (e.type === 'incorrect') stats[e.name].incorrects++;
+        if (category && e.category !== category) return;
+        const s = get(e.name);
+        if (e.type === 'correct') { s.correct++; if (hasTossupLog) s.trackedNet += 4; }
+        if (e.type === 'interrupt') { s.interrupts++; if (hasTossupLog) s.trackedNet -= 4; }
+        if (e.type === 'incorrect') s.incorrects++;
       });
-    } else if (match.players) { // Fallback for legacy format
+    } else if (Array.isArray(match.players)) { // Legacy format
       match.players.forEach(p => {
+        if (typeof p !== 'object') return;
         playersInMatch.add(p.name);
-        if (!stats[p.name]) stats[p.name] = { matches: 0, correct: 0, interrupts: 0, incorrects: 0 };
-        stats[p.name].correct += p.correct;
-        stats[p.name].interrupts += p.interrupts;
-        stats[p.name].incorrects += p.incorrects;
+        if (category && match.category !== category) return;
+        const s = get(p.name);
+        s.correct += p.correct || 0;
+        s.interrupts += p.interrupts || 0;
+        s.incorrects += p.incorrects || 0;
       });
     }
 
-    playersInMatch.forEach(name => {
-      if (stats[name]) stats[name].matches += 1;
-    });
+    if (hasTossupLog) {
+      match.tossupLog.forEach(t => {
+        if (category && t.category !== category) return;
+        (t.players || []).forEach(n => get(n).heard++);
+      });
+    }
+
+    playersInMatch.forEach(name => { get(name).matches += 1; });
   });
 
+  return stats;
+}
+
+// Derived numbers for one player
+function summarize(p) {
+  const net = p.correct * 4 - p.interrupts * 4;
+  const attempts = p.correct + p.interrupts + p.incorrects;
+  return {
+    net,
+    accuracy: attempts > 0 ? (p.correct / attempts) * 100 : null,
+    perTossup: p.heard > 0 ? p.trackedNet / p.heard : null,
+    perMatch: p.matches > 0 ? net / p.matches : null
+  };
+}
+
+// Sort: enough matches first, then points per tossup heard, then points per match, then net
+function sortPlayers(stats, useMatchThreshold) {
+  return Object.keys(stats).sort((a, b) => {
+    const A = stats[a], B = stats[b];
+    if (useMatchThreshold) {
+      const qa = A.matches >= MIN_MATCHES_FOR_RANKING, qb = B.matches >= MIN_MATCHES_FOR_RANKING;
+      if (qa !== qb) return qa ? -1 : 1;
+    }
+    const sa = summarize(A), sb = summarize(B);
+    const ra = sa.perTossup ?? -Infinity, rb = sb.perTossup ?? -Infinity;
+    if (ra !== rb) return rb - ra;
+    const ma = sa.perMatch ?? -Infinity, mb = sb.perMatch ?? -Infinity;
+    if (ma !== mb) return mb - ma;
+    return sb.net - sa.net;
+  });
+}
+
+const fmt = (v, digits = 2) => (v === null ? '—' : v.toFixed(digits));
+
+function renderOverallLeaderboard(matches) {
+  const stats = buildStats(matches);
   const tbody = document.getElementById('leaderboardBody');
   tbody.innerHTML = '';
 
-  const playerNames = Object.keys(stats);
-  playerNames.sort((a, b) => {
-    const netA = (stats[a].correct * 4) - (stats[a].interrupts * 4);
-    const netB = (stats[b].correct * 4) - (stats[b].interrupts * 4);
-    return netB - netA;
-  });
-
-  playerNames.forEach(name => {
+  sortPlayers(stats, true).forEach(name => {
     const p = stats[name];
-    const netPoints = (p.correct * 4) - (p.interrupts * 4);
-    const totalAttempts = p.correct + p.interrupts + p.incorrects;
-    const accuracy = totalAttempts > 0 ? ((p.correct / totalAttempts) * 100).toFixed(1) + '%' : '0.0%';
-
+    const s = summarize(p);
     const tr = document.createElement('tr');
+    if (p.matches < MIN_MATCHES_FOR_RANKING) {
+      tr.className = 'low-sample';
+      tr.title = `Fewer than ${MIN_MATCHES_FOR_RANKING} matches: not enough data to rank yet`;
+    }
     tr.innerHTML = `
-      <td><strong>${name}</strong></td>
+      <td><strong>${escapeHtml(name)}</strong></td>
       <td>${p.matches}</td>
-      <td style="color: green;">+${p.correct} (${p.correct * 4} pts)</td>
-      <td style="color: red;">${p.interrupts} (-${p.interrupts * 4} pts)</td>
-      <td>${p.incorrects} (0 pts)</td>
-      <td><strong>${netPoints} pts</strong></td>
-      <td>${accuracy}</td>
+      <td>${p.heard}</td>
+      <td style="color: green;">+${p.correct}</td>
+      <td style="color: red;">${p.interrupts}</td>
+      <td>${p.incorrects}</td>
+      <td><strong>${s.net}</strong></td>
+      <td><strong>${fmt(s.perTossup)}</strong></td>
+      <td>${fmt(s.perMatch, 1)}</td>
+      <td>${s.accuracy === null ? '—' : s.accuracy.toFixed(1) + '%'}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -478,57 +638,26 @@ function renderOverallLeaderboard(matches) {
 
 function renderCategoryBreakdown(matches) {
   const selectedCat = document.getElementById('categoryFilter').value;
-  const stats = {};
-
-  roster.forEach(name => {
-    stats[name] = { correct: 0, interrupts: 0, incorrects: 0 };
-  });
-
-  matches.forEach(match => {
-    if (match.events) {
-      match.events.forEach(e => {
-        if (e.category === selectedCat) {
-          if (!stats[e.name]) stats[e.name] = { correct: 0, interrupts: 0, incorrects: 0 };
-          if (e.type === 'correct') stats[e.name].correct++;
-          if (e.type === 'interrupt') stats[e.name].interrupts++;
-          if (e.type === 'incorrect') stats[e.name].incorrects++;
-        }
-      });
-    } else if (match.players && match.category === selectedCat) { // Legacy match support
-      match.players.forEach(p => {
-        if (!stats[p.name]) stats[p.name] = { correct: 0, interrupts: 0, incorrects: 0 };
-        stats[p.name].correct += p.correct;
-        stats[p.name].interrupts += p.interrupts;
-        stats[p.name].incorrects += p.incorrects;
-      });
-    }
-  });
-
+  const stats = buildStats(matches, selectedCat);
   const tbody = document.getElementById('categoryLeaderboardBody');
   tbody.innerHTML = '';
 
-  const playerNames = Object.keys(stats);
-  playerNames.sort((a, b) => {
-    const netA = (stats[a].correct * 4) - (stats[a].interrupts * 4);
-    const netB = (stats[b].correct * 4) - (stats[b].interrupts * 4);
-    return netB - netA;
-  });
-
-  playerNames.forEach(name => {
+  sortPlayers(stats, false).forEach(name => {
     const p = stats[name];
-    const netPoints = (p.correct * 4) - (p.interrupts * 4);
-    const totalAttempts = p.correct + p.interrupts + p.incorrects;
-    const accuracy = totalAttempts > 0 ? ((p.correct / totalAttempts) * 100).toFixed(1) + '%' : '0.0%';
-
+    const s = summarize(p);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>${name}</strong></td>
+      <td><strong>${escapeHtml(name)}</strong></td>
+      <td>${p.heard}</td>
       <td style="color: green;">+${p.correct}</td>
       <td style="color: red;">${p.interrupts}</td>
       <td>${p.incorrects}</td>
-      <td><strong>${netPoints} pts</strong></td>
-      <td>${accuracy}</td>
+      <td><strong>${s.net}</strong></td>
+      <td><strong>${fmt(s.perTossup)}</strong></td>
+      <td>${s.accuracy === null ? '—' : s.accuracy.toFixed(1) + '%'}</td>
     `;
     tbody.appendChild(tr);
   });
 }
+
+updateTossupCounter();
